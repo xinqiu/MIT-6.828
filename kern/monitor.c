@@ -56,36 +56,6 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
-int
-mon_backtrace(int argc, char **argv, struct Trapframe *tf)
-{
-	// Your code here.
-	int j;
-	uint32_t ebp = read_ebp();
-	uint32_t eip = *((uint32_t *)ebp+1);
-	cprintf("Stack backtrace:\n");
-	while ((int)ebp != 0)
-	{
-		cprintf("  ebp %08x eip %08x args ", ebp, eip);
-		uint32_t *args = (uint32_t *)ebp + 2;
-		for (j = 0; j < 5; j ++) {
-            cprintf("%08x ", args[j]);
-        }
-        cprintf("\n");
-
-        struct Eipdebuginfo info;
-        debuginfo_eip(eip, &info);
-        cprintf("         %s:%d: %.*s+%d\n", \
-			info.eip_file, info.eip_line, info.eip_fn_namelen, info.eip_fn_name, eip - info.eip_fn_addr);
-
-        ebp = *(uint32_t *)ebp;
-        eip = *((uint32_t *)ebp+1);
-	}
-	return 0;
-}
-
-
-
 /***** Kernel monitor command interpreter *****/
 
 #define WHITESPACE "\t\r\n "
