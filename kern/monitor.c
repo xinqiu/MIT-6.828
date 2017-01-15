@@ -24,6 +24,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "showmappings", "Display VM to PM mapping", mon_showmappings},
 };
 #define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
@@ -53,6 +54,48 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	cprintf("Kernel executable memory footprint: %dKB\n",
 		ROUNDUP(end - entry, 1024) / 1024);
 	return 0;
+}
+
+int mon_showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	extern pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
+	extern pde_t *kern_pgdir;
+
+	if (argc != 3) {
+        cprintf("Usage: showmappings 0xbegin_addr 0xend_addr\n");
+        return 0;
+    }
+
+    long begin = strtol(argv[1], NULL, 16);
+    long end = strtol(argv[2], NULL, 16);
+    if (end <= begin) {
+    	cprintf("end_addr must larger than begin_addr\n");
+    	return 0;
+    }
+    if (end > 0xffffffff) {
+    	cprintf("end_addr overflow\n");
+    	return 0;
+    }
+
+    if (begin != ROUNDUP(begin, PGSIZE) || end != ROUNDUP(end, PGSIZE))
+    {
+    	cprintf("not aligned\n");
+    	return 0;
+    }
+    
+    for (; begin < end; begin+=PGSIZE) {
+    	cprintf("%08x--%08x: ", begin, begin+PGSIZE);
+    	pte_t *pte = pgdir_walk(kern_pgdir, (void*)begin, 0);
+    	if (!pte)
+    	{
+    		cprintf("not mapped\n");
+    		return 0;
+    	}
+    	cprintf("page %08x ", PTE_ADDR(*pte));
+    	cprintf("PTE_P: %x, PTE_W: %x, PTE_U: %x\n", *pte&PTE_P, *pte&PTE_W, *pte&PTE_U);
+    }
+
+    return 0;
 }
 
 /***** Kernel monitor command interpreter *****/
