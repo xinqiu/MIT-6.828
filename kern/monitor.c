@@ -25,7 +25,9 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "showmappings", "Display VM to PM mapping", mon_showmappings},
 };
+#define NCOMMANDS (sizeof(commands)/sizeof(commands[0]))
 
 /***** Implementations of basic kernel monitor commands *****/
 
@@ -34,7 +36,7 @@ mon_help(int argc, char **argv, struct Trapframe *tf)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(commands); i++)
+	for (i = 0; i < NCOMMANDS; i++)
 		cprintf("%s - %s\n", commands[i].name, commands[i].desc);
 	return 0;
 }
@@ -55,14 +57,47 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
-int
-mon_backtrace(int argc, char **argv, struct Trapframe *tf)
+int mon_showmappings(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
-	return 0;
+	extern pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
+	extern pde_t *kern_pgdir;
+
+	if (argc != 3) {
+        cprintf("Usage: showmappings 0xbegin_addr 0xend_addr\n");
+        return 0;
+    }
+
+    long begin = strtol(argv[1], NULL, 16);
+    long end = strtol(argv[2], NULL, 16);
+    if (end <= begin) {
+    	cprintf("end_addr must larger than begin_addr\n");
+    	return 0;
+    }
+    if (end > 0xffffffff) {
+    	cprintf("end_addr overflow\n");
+    	return 0;
+    }
+
+    if (begin != ROUNDUP(begin, PGSIZE) || end != ROUNDUP(end, PGSIZE))
+    {
+    	cprintf("not aligned\n");
+    	return 0;
+    }
+    
+    for (; begin < end; begin+=PGSIZE) {
+    	cprintf("%08x--%08x: ", begin, begin+PGSIZE);
+    	pte_t *pte = pgdir_walk(kern_pgdir, (void*)begin, 0);
+    	if (!pte)
+    	{
+    		cprintf("not mapped\n");
+    		return 0;
+    	}
+    	cprintf("page %08x ", PTE_ADDR(*pte));
+    	cprintf("PTE_P: %x, PTE_W: %x, PTE_U: %x\n", *pte&PTE_P, *pte&PTE_W, *pte&PTE_U);
+    }
+
+    return 0;
 }
-
-
 
 /***** Kernel monitor command interpreter *****/
 
@@ -100,7 +135,7 @@ runcmd(char *buf, struct Trapframe *tf)
 	// Lookup and invoke the command
 	if (argc == 0)
 		return 0;
-	for (i = 0; i < ARRAY_SIZE(commands); i++) {
+	for (i = 0; i < NCOMMANDS; i++) {
 		if (strcmp(argv[0], commands[i].name) == 0)
 			return commands[i].func(argc, argv, tf);
 	}
