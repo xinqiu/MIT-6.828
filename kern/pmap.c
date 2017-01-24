@@ -103,11 +103,11 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-    result = nextfree;
-    nextfree = ROUNDUP(nextfree+n, PGSIZE);
-    if((uint32_t)nextfree > KERNBASE + (npages * PGSIZE)) {
-        panic("Out of memory!\n");
-    }
+	result = nextfree;
+	nextfree = ROUNDUP(nextfree+n, PGSIZE);
+	if((uint32_t)nextfree > KERNBASE + (npages * PGSIZE)) {
+		panic("Out of memory!\n");
+	}
     return result;
 }
 
@@ -153,13 +153,15 @@ mem_init(void)
 	// array.  'npages' is the number of physical pages in memory.  Use memset
 	// to initialize all fields of each struct PageInfo to 0.
 	// Your code goes here:
-    size_t PageInfo_size = sizeof(struct PageInfo);
-    pages = (struct PageInfo *)boot_alloc(npages * PageInfo_size);
-    memset(pages, 0, npages * PageInfo_size);
+	size_t PageInfo_size = sizeof(struct PageInfo);
+	pages = (struct PageInfo *)boot_alloc(npages * PageInfo_size);
+	memset(pages, 0, npages * PageInfo_size);
 
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	envs = (struct Env*)boot_alloc(NENV*sizeof(struct Env));
+	memset(envs, 0, NENV*sizeof(struct Env));
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -191,7 +193,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
-
+	boot_map_region(kern_pgdir, UENVS, PTSIZE, PADDR(envs), PTE_U);
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
 	// stack.  The kernel stack grows down from virtual address KSTACKTOP.
