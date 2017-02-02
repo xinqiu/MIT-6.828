@@ -279,7 +279,7 @@ region_alloc(struct Env *e, void *va, size_t len)
 	struct PageInfo *p = NULL;
 	va = ROUNDDOWN(va, PGSIZE);
 	len = ROUNDUP(len, PGSIZE);
-	for (; len; len-=PGSIZE, va+=PGSIZE); {
+	for (; len; len-=PGSIZE, va+=PGSIZE) {
 		if (!(p = page_alloc(ALLOC_ZERO)))
 			panic("allocation failed.");
 
@@ -351,20 +351,20 @@ load_icode(struct Env *e, uint8_t *binary)
 	struct Elf *elf_head = (struct Elf *)binary;
 	if (elf_head->e_magic != ELF_MAGIC) 
 		panic("ELF binary image error.");
+
+	lcr3(PADDR(e->env_pgdir));
 	ph = (struct Proghdr*)((uint8_t*)(elf_head) + elf_head->e_phoff);
 	eph = ph + elf_head->e_phnum;
 	for(; ph < eph; ph++)
 	{
-		if (ph->p_type == ELF_PROG_LOAD) {
-			cprintf("Success1\n");
+		if (ph->p_type == ELF_PROG_LOAD && ph->p_filesz <= ph->p_memsz) {
 			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
-			cprintf("Success2\n");
 			memmove((void*)ph->p_va,binary+ph->p_offset,ph->p_filesz);
 			memset((void*)(ph->p_va + ph->p_filesz),0,ph->p_memsz-ph->p_filesz);
 		}
 	}
 	e->env_tf.tf_eip = elf_head->e_entry;
-	lcr3(PADDR(e->env_pgdir));
+	lcr3(PADDR(kern_pgdir));
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
@@ -512,7 +512,6 @@ env_run(struct Env *e)
 	curenv->env_runs++;
 	lcr3(PADDR(curenv->env_pgdir));
 	env_pop_tf(&curenv->env_tf);
-
 	panic("env_run not yet implemented");
 }
 
