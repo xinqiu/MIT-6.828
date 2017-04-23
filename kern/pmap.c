@@ -273,7 +273,7 @@ page_init(void)
         else if (i >= IOPHYSMEM/PGSIZE && i < EXTPHYSMEM/PGSIZE) {
             pages[i].pp_ref = 1;
         }
-        else if (i <= EXTPHYSMEM/PGSIZE || i < PADDR(boot_alloc(0))/PGSIZE){
+        else if (i >= EXTPHYSMEM/PGSIZE && i < PADDR(boot_alloc(0))/PGSIZE){
             pages[i].pp_ref++;
             pages[i].pp_link = NULL;
         }
