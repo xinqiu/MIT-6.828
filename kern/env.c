@@ -278,14 +278,14 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   (Watch out for corner-cases!)
 	struct PageInfo *p = NULL;
 	va = ROUNDDOWN(va, PGSIZE);
-	len = ROUNDUP(len, PGSIZE);
-	for (; len; len-=PGSIZE, va+=PGSIZE) {
+	void * end = (void *)ROUNDUP(va + len, PGSIZE);
+	for (; va <= end; va+=PGSIZE) {
 		if (!(p = page_alloc(ALLOC_ZERO)))
 			panic("allocation failed.");
 
-		pte_t *pte = pgdir_walk(e->env_pgdir, va, true);
-		if (!pte)
-			panic("Unable to alloc page.");
+		// pte_t *pte = pgdir_walk(e->env_pgdir, va, true);
+		// if (!pte)
+		// 	panic("Unable to alloc page.");
 
 		int r = page_insert(e->env_pgdir, p, va, PTE_U | PTE_W);
 		if (r != 0)
